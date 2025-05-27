@@ -40,6 +40,7 @@
 #define IO_BUFFER_C
 #include "Tpm.h"
 #include "IoBuffers_fp.h"
+#include <stdio.h>
 
 //** Buffers and Functions
 
@@ -92,6 +93,9 @@ BYTE* MemoryGetOutBuffer(UINT32 size  // required size of the buffer
 )
 {
     BYTE* retVal = (BYTE*)(&s_actionIoBuffer[s_actionIoAllocation / UoM]);
+    printf("size: %d\n", size);
+    printf("s_actionIoAllocation: %d\n", s_actionIoAllocation);
+    printf("sizeof(s_actionIoBuffer): %d\n", sizeof(s_actionIoBuffer));
     pAssert((size + s_actionIoAllocation) < (sizeof(s_actionIoBuffer)));
     // In this implementation, a static buffer is set aside for the command action
     // output buffer.

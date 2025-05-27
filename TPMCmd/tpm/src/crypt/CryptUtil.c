@@ -40,6 +40,8 @@
 
 //** Includes
 #include "Tpm.h"
+#include "CryptSphincs.h"
+#include "CryptMLDsa.h"
 #include "Marshal.h"
 
 //****************************************************************************/
@@ -446,6 +448,12 @@ BOOL CryptInit(void)
 #if ALG_ECC
     ok = ok && CryptEccInit();
 #endif  // ALG_ECC
+#if ALG_SPHINCS
+    ok = ok && CryptSphincsInit();
+#endif // ALG_SPHINCS
+#if ALG_MLDSA
+    ok = ok && CryptMLDsaInit();
+#endif // ALG_MLDSA
     return ok;
 }
 
@@ -512,6 +520,9 @@ BOOL CryptIsAsymAlgorithm(TPM_ALG_ID algID  // IN: algorithm ID
 #endif
 #if ALG_ECC
         case TPM_ALG_ECC:
+#endif
+#if ALG_MLDSA
+        case TPM_ALG_MLDSA_87:
 #endif
             return TRUE;
             break;
@@ -1107,6 +1118,17 @@ CryptCreateObject(OBJECT*                object,  // IN: new object structure po
             break;
 #endif  // ALG_RSA
 
+#if ALG_SPHINCS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    result = CryptSphincsGenerateKeyPair(publicArea, sensitive, rand);
+	    break;
+#endif // ALG_SPHINCS
+#if ALG_MLDSA
+        case TPM_ALG_MLDSA_87:
+            result = CryptMLDsaGenerateKeyPair(publicArea, sensitive, rand);
+            break;
+#endif // ALG_MLDSA
+
 #if ALG_ECC
         // Create ECC key
         case TPM_ALG_ECC:
@@ -1269,6 +1291,15 @@ BOOL CryptIsAsymSignScheme(TPMI_ALG_PUBLIC      publicType,  // IN: Type of the 
             break;
 #endif  // ALG_RSA
 
+#if ALG_SPHINCS
+            case TPM_ALG_SPHINCS_SHAKE_256F:
+                break;
+#endif // ALG_SPHINCS
+#if ALG_MLDSA
+            case TPM_ALG_MLDSA_87:
+                break;
+#endif // ALG_MLDSA
+
 #if ALG_ECC
         // If ECC is implemented ECDSA is required
         case TPM_ALG_ECC:
@@ -1398,11 +1429,19 @@ BOOL CryptSelectSignScheme(OBJECT*          signObject,  // IN: signing key
             return FALSE;
         // Point to the scheme object
         if(CryptIsAsymAlgorithm(publicArea->type))
-            objectScheme =
-                (TPMT_SIG_SCHEME*)&publicArea->parameters.asymDetail.scheme;
+           {
+            if(publicArea->type == TPM_ALG_MLDSA_87)
+                objectScheme =
+                    (TPMT_SIG_SCHEME *)&publicArea->parameters.mldsaDetail.scheme;
+            else
+                objectScheme =
+                    (TPMT_SIG_SCHEME *)&publicArea->parameters.asymDetail.scheme;
+        }
         else
+        {
             objectScheme =
-                (TPMT_SIG_SCHEME*)&publicArea->parameters.keyedHashDetail.scheme;
+                (TPMT_SIG_SCHEME *)&publicArea->parameters.keyedHashDetail.scheme;
+        }
 
         // If the object doesn't have a default scheme, then use the
         // input scheme.
@@ -1489,6 +1528,18 @@ CryptSign(OBJECT*          signKey,     // IN: signing key
             result = CryptRsaSign(signature, signKey, digest, NULL);
             break;
 #endif  // ALG_RSA
+
+#if ALG_SPHINCS
+        case TPM_ALG_SPHINCS_SHAKE_256F:
+            result = CryptSphincsSign(signature, signKey, digest, NULL);
+            break;
+#endif //ALG_SPHINCS
+#if ALG_MLDSA
+        case TPM_ALG_MLDSA_87:
+            result = CryptMLDsaSign(signature, signKey, digest, NULL);
+            break;
+#endif // ALG_MLDSA
+
 #if ALG_ECC
         case TPM_ALG_ECC:
             // The reason that signScheme is passed to CryptEccSign but not to the
